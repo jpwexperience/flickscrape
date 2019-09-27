@@ -42,9 +42,8 @@ def main():
         movieRegex = re.escape(base) + r"(?!blog).*\.html"
         match = re.match(movieRegex, tempUrl)
         if match:
-            print(tempUrl)
             tempSplit = tempUrl.split('/')
-            movieBase = tempSplit[len(tempSplit) - 1] + tempSplit[len(tempSplit) - 1] 
+            movieBase = tempSplit[len(tempSplit) - 1] 
             baseSplit = movieBase.split('-')
             num = baseSplit[0]
             found = 0
@@ -54,10 +53,10 @@ def main():
                     break
             if found == 0:
                 nums.append(num)
-                links.append(movieBase)
+                links.append(tempUrl)
     print("--- Processing Films ---")
-    #for movie in links:
-    processFilm(links[0])
+    for movie in links:
+        processFilm(movie)
 
 if __name__ == "__main__":
     main()
