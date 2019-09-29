@@ -2,40 +2,150 @@ import os, sys, re, csv, requests, lxml, urllib3
 from bs4 import BeautifulSoup
 
 sovietMovies = []
+skippedFlicks = []
 base = "https://sovietmoviesonline.com/"
 link = base + "all_movies.html"
 
-class filmObj():
-    badFile = 0
-    badSrt = 0
-    fileSize = 0
-    srtSize = 0
+class Flick():
+    badFile = 1
+    badSrt = 1
+    fileSize = 0.01
+    srtSize = 0.01
+    downloadUrl = ""
+    srtUrl = ""
+    name = ""
+    year = ""
+    imdb = ""
+    og = ""
+    director = ""
 
-    def __init__(self, num, flickUrl, downloadUrl, name, year, imdb, srtUrl):
+    def __init__(self, url, num):
+        self.url = url
         self.num = num
-        self.flickUrl = flickUrl
-        self.downloadUrl = downloadUrl
-        self.name = name
-        this.year = year
-        this.imdb = imdb
-        this.srtUrl = srtUrl
 
-def processFilm(flickStuff):
+    def __str__(self):
+        string = (
+            "URL: " + self.url + "\n" + 
+            "Download Url: " + self.downloadUrl + "\n" +
+            "Sub Url: " + self.srtUrl + "\n" +
+            "File Size: " + str(self.fileSize / 1000000000) + " gb\n" +
+            "SRT Size: " + str(self.fileSize) + "\n" +
+            "Original Name: " + self.og + "\n" +
+            "Year: " + self.year + "\n" +
+            "IMDB: " + self.imdb + "\n" +
+            "Director: " + self.director
+            )
+        return string
+
+def urlErr(link):
+    print("Runtime error. Link is likely 404.")
+    print("Skipping: " + link)
+
+def writeCsv():
+    print("not yet")
+
+#Flicks are initialized to not download.
+#Cuts redundancy setting Flick
+def downloadInit(flick):
+    r = requests.get(flick.downloadUrl)
+    if r.status_code == requests.codes.ok:
+        flickHead = requests.head(flick.downloadUrl)
+        srtHead = requests.head(flick.srtUrl)
+        try:
+            flick.srtSize = int(srtHead.headers['content-length'])
+            flick.badSrt = 0
+        except KeyError:
+            print("Key Error: " + flick.srtUrl)
+        try:
+            flick.fileSize = int(flickHead.headers['content-length'])
+            flick.badFile = 0 
+        except KeyError:
+            print("Key Error: " + flick.downloadUrl)
+    else:
+        print("Incorrect Request Code: " + flick.downloadUrl)
+
+#Scrape info from html page and create flick object
+#Any content not found is simply skipped
+#Assumptions: 
+#   First Table Found Contains: Original Title, IMDB, Views, Year
+#   first <div class="director">...</div> contains films director
+#   There is <div id="error404">...</div> of 404 pages
+def processFilm(flick):
     global link
-    filmUrl = base + flickStuff 
-    filmReq = requests.get(filmUrl)
+    global base
+    flickUrl = flick.url
+    num = flick.num
+    filmReq = requests.get(flickUrl)
     filmSource = filmReq.text
-    filmSoup = BeautifulSoup(filmSource, "lxml")
-    print(filmSoup.h1.contents[0])
+    soup = BeautifulSoup(filmSource, "lxml")
+
+    for i in soup.find_all('div'):
+        if i.id == "error404":
+            skippedFlicks.append(flick)
+            return
+    if filmReq.status_code == requests.codes.ok:
+        try:
+            director = soup.find_all('div', {'class': ['director']})
+            try:
+                flick.director = director[0].a.contents[0]
+            except IndexError:
+                print("Director not found: " + flickUrl)
+            table = soup.find_all('table')
+            try:
+                td = table[0].find_all('td')
+                try:
+                    flick.og = td[0].contents[1].strip()
+                except IndexError:
+                    print("Original Title not found.")
+                try:
+                    flick.imdb = td[1].contents[1].strip()
+                except IndexError:
+                    print("IMDB rating not found.")
+                #Number of views is td[2].contents[1] hence the jump
+                try:
+                    flick.year = td[3].contents[1].strip()
+                except IndexError:
+                    print("Release Year not found.")
+                    return
+            except IndexError:
+                print("Error finding <td>'s: " + flickUrl)
+                print("Skipping: " + flickUrl)
+                skippedFlicks.append(flick)
+
+        except AttributeError:
+            urlErr(flickUrl)
+            skippedFlicks.append(flick)
+            return
+
+    else:
+        urlErr(flickUrl)
+        skippedFlicks.append(flick)
+        return
+
+    #Segmenting these strings more because I know these links aren't always perfect
+    #ie if film has two parts it may be <num>-1.mp4 and <num>-2.mp4
+    downloadBase = base + "movies/" + str(flick.num)
+    flick.downloadUrl = downloadBase + ".mp4"
+    flick.srtUrl = downloadBase + ".srt"
+
+    downloadInit(flick)
+     
+    sovietMovies.append(flick)
+    return
 
 def main():
     print("--- Extracting Film Links ---")
     global link
+    #global sovietMovies
     sovietRequest = requests.get(link)
     data = sovietRequest.text
     soup = BeautifulSoup(data, "lxml")
-    nums = []
-    links = []
+    allLinks = [] #links before removing dupes
+    links = [] #links after remove dupes
+    tempDict = {
+            "url": "",
+            "num": 1,
+    }
     for link in soup.find_all('a'):
         tempUrl = link.get('href')
         #make sure it's a proper film link and not blog
@@ -46,17 +156,33 @@ def main():
             movieBase = tempSplit[len(tempSplit) - 1] 
             baseSplit = movieBase.split('-')
             num = baseSplit[0]
-            found = 0
-            for i in nums:
-                if (i == num):
-                    found = 1
-                    break
-            if found == 0:
-                nums.append(num)
-                links.append(tempUrl)
-    print("--- Processing Films ---")
-    for movie in links:
-        processFilm(movie)
+            linkInfo = tempDict.copy()
+            linkInfo["url"] = tempUrl
+            linkInfo["num"] = int(num)
+            allLinks.append(linkInfo)
+
+    #Check for duplicate links
+    seen = set()
+    for x in allLinks:
+        if x["num"] not in seen:
+            links.append(x)
+            seen.add(x["num"])
+
+    print("--- Processing Flicks ---")
+    for i in range(0, 10, 1):
+        tempFlick = Flick(links[i]["url"], links[i]["num"])
+        processFilm(tempFlick)
+
+    #for movie in links:
+    #    tempFlick = Flick(movie["url"], movie["num"])
+    #    processFilm(tempFlick)
+    
+    print("--- Flicks to Download ---")
+    for i in sovietMovies:
+        print(i)
+    print("--- Flicks to Skip ---")
+    for i in skippedFlicks:
+        print(i)
 
 if __name__ == "__main__":
     main()
