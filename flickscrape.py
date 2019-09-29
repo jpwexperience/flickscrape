@@ -37,9 +37,9 @@ class Flick():
             )
         return string
 
-def urlErr(link):
-    print("Runtime error. Link is likely 404.")
-    print("Skipping: " + link)
+def errMsg(msg):
+    sys.stderr.write(msg + "\n")
+    sys.stderr.flush()
 
 def writeCsv():
     print("not yet")
@@ -55,14 +55,14 @@ def downloadInit(flick):
             flick.srtSize = int(srtHead.headers['content-length'])
             flick.badSrt = 0
         except KeyError:
-            print("Key Error: " + flick.srtUrl)
+            errMsg("Key Error: " + flick.srtUrl)
         try:
             flick.fileSize = int(flickHead.headers['content-length'])
             flick.badFile = 0 
         except KeyError:
-            print("Key Error: " + flick.downloadUrl)
+            errMsg("Key Error: " + flick.downloadUrl)
     else:
-        print("Incorrect Request Code: " + flick.downloadUrl)
+        errMsg("Bad Request Code (ie 404): " + flick.downloadUrl)
 
 #Scrape info from html page and create flick object
 #Any content not found is simply skipped
@@ -89,36 +89,36 @@ def processFilm(flick):
             try:
                 flick.director = director[0].a.contents[0]
             except IndexError:
-                print("Director not found: " + flickUrl)
+                errMsg("Director not found: " + flickUrl)
+
             table = soup.find_all('table')
             try:
                 td = table[0].find_all('td')
                 try:
                     flick.og = td[0].contents[1].strip()
                 except IndexError:
-                    print("Original Title not found.")
+                    errMsg("Original Title not found.")
                 try:
                     flick.imdb = td[1].contents[1].strip()
                 except IndexError:
-                    print("IMDB rating not found.")
+                    errMsg("IMDB rating not found.")
                 #Number of views is td[2].contents[1] hence the jump
                 try:
                     flick.year = td[3].contents[1].strip()
                 except IndexError:
-                    print("Release Year not found.")
+                    errMsg("Release Year not found.")
                     return
             except IndexError:
-                print("Error finding <td>'s: " + flickUrl)
-                print("Skipping: " + flickUrl)
+                errMsg("Error finding <td>'s, skipping: " + flickUrl)
                 skippedFlicks.append(flick)
 
         except AttributeError:
-            urlErr(flickUrl)
+            errMsg("Attribute Error, skipping: " + flickUrl)
             skippedFlicks.append(flick)
             return
 
     else:
-        urlErr(flickUrl)
+        errMsg("Bad request code on flick page, skipping: " + flickUrl)
         skippedFlicks.append(flick)
         return
 
@@ -127,11 +127,12 @@ def processFilm(flick):
     downloadBase = base + "movies/" + str(flick.num)
     flick.downloadUrl = downloadBase + ".mp4"
     flick.srtUrl = downloadBase + ".srt"
-
     downloadInit(flick)
-     
-    sovietMovies.append(flick)
-    return
+
+    if flick.badFile == 1:
+        skippedFlicks.append(flick)
+    else:
+        sovietMovies.append(flick)
 
 def main():
     print("--- Extracting Film Links ---")
@@ -169,7 +170,7 @@ def main():
             seen.add(x["num"])
 
     print("--- Processing Flicks ---")
-    for i in range(0, 10, 1):
+    for i in range(0, 1, 1):
         tempFlick = Flick(links[i]["url"], links[i]["num"])
         processFilm(tempFlick)
 
