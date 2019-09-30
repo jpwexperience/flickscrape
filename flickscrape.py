@@ -1,7 +1,6 @@
 import os, sys, re, math, csv, requests 
 import lxml
 from bs4 import BeautifulSoup
-from hurry.filesize import size
 
 sovietMovies = []
 skippedFlicks = []
@@ -63,8 +62,40 @@ def errMsg(msg):
     sys.stderr.write(msg + "\n")
     sys.stderr.flush()
 
-def downloadFlicks():
-    print("woah there buster")
+def downloadFlicks(flick):
+    d = os.path.realpath(__file__)
+    baseDir = d.rsplit('/', 1)
+    download = flick.downloadUrl
+    chunkSize = 1024 * 1024
+    h = requests.head(flick.downloadUrl, allow_redirects=True)
+    header = h.headers
+    content_type = header.get('content-type')
+    if 'text' in content_type.lower():
+        print("Not downloadable")
+    elif 'html' in content_type.lower():
+        print("Not downloadable")
+    else:
+        if flick.badFile == 1:
+            print("Bad Movie File Set, skipping...")
+        else:
+            titleNoSpace = flick.title.replace(' ', '_')
+            newDir = baseDir[0] + "/" + titleNoSpace
+            if not os.path.isdir(newDir):
+                os.mkdir(newDir)
+            print("Downloading: " + flick.downloadUrl)
+            r = requests.get(flick.downloadUrl, stream=True)
+            with open((newDir + "/" + titleNoSpace  + '.mp4'), 'wb') as f:
+                for chunk in r.iter_content(chunk_size=chunkSize):
+                    if chunk: # filter out keep-alive new chunks
+                        f.write(chunk)
+            if flick.badSrt == 1:
+                print("Bad Srt set, skipping...")
+            else:
+                r = requests.get(flick.srtUrl, stream=True)
+                with open((newDir + "/" + titleNoSpace  + '.srt'), 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=1024):
+                        if chunk: # filter out keep-alive new chunks
+                            f.write(chunk)
 
 #Creates CSV file containg film information
 #Defaults to this script's directory
@@ -90,7 +121,6 @@ def writeCsv():
     for flick in skippedFlicks:
         flick.fileSize = 0
         flick.srtSize = 0
-        print(csvOut(flick))
         f.write(csvOut(flick))
 
 #Flicks are initialized to not download.
@@ -220,13 +250,13 @@ def main():
             seen.add(x["num"])
 
     print("--- Processing Flicks ---")
-    #for i in range(0, 250, 1):
-    #    tempFlick = Flick(links[i]["url"], links[i]["num"])
-    #    processFilm(tempFlick)
-
-    for movie in links:
-        tempFlick = Flick(movie["url"], movie["num"])
+    for i in range(0, 2, 1):
+        tempFlick = Flick(links[i]["url"], links[i]["num"])
         processFilm(tempFlick)
+
+    #for movie in links:
+    #    tempFlick = Flick(movie["url"], movie["num"])
+    #    processFilm(tempFlick)
     
     #print("--- Flicks to Download ---")
     #for i in sovietMovies:
@@ -238,6 +268,21 @@ def main():
     #CSV delimited by bar '|'
     print("--- Generating CSV File ---")
     writeCsv()
+    totalSize = 0.0
+    print("--- Calculating Total Size ---")
+    for i in sovietMovies:
+        totalSize += i.fileSize
+        totalSize += i.srtSize
+    totalSize = totalSize / 1000000000
+    inputString = "\nTotal Download Size: " + str(round(totalSize, 2)) + " gb" 
+    inputString += "\nWould you like to download [y/n]? "
+    downloadChoice = input(inputString)
+    if downloadChoice != 'y':
+        print("No Downloads Today")
+        exit(1)
+    print("--- Downloading Files ---")
+    for i in sovietMovies:
+        downloadFlicks(i)
 
 if __name__ == "__main__":
     main()
