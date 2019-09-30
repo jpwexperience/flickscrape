@@ -1,6 +1,6 @@
 # FlickScrape
 
-## Web Scraper to download and pull information from [sovietmoviesonline.com](https://sovietmoviesonline.com)
+## Python 3 Web Scraper to download and pull information from [sovietmoviesonline.com](https://sovietmoviesonline.com)
 
 ### Usage: $ python3 flickscrape.py
 The script uses the /all\_movies.html to pull all the film links. Each link's page is then scraped for relevant content which is exported to a CSV file delimited by a pipe "|". User is then prompted whethey want to download the files. If selected, the flick and corresponding subtitle will be downloaded to a newly created directory named using the flick's title. 
