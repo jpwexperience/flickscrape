@@ -1,2 +1,5 @@
 #exclude generated CSV files
 *.csv
+
+#ignore hidden files such as OSX lock files
+.*

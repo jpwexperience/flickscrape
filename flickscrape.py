@@ -145,7 +145,7 @@ def downloadInit(flick):
 #Assumptions: 
 #   First Table Found Contains: Original Title, IMDB, Views, Year
 #   first <div class="director">...</div> contains films director
-#   There is <div id="error404">...</div> of 404 pages
+#   There is <div id="error404">...</div> on 404 pages
 def processFilm(flick):
     global link
     global base
