@@ -62,6 +62,7 @@ def errMsg(msg):
     sys.stderr.write(msg + "\n")
     sys.stderr.flush()
 
+#Try and download flick and english subtitles
 def downloadFlicks(flick):
     d = os.path.realpath(__file__)
     baseDir = d.rsplit('/', 1)
