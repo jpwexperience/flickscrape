@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import os, sys, re, math, csv, requests 
 import lxml
 from bs4 import BeautifulSoup
@@ -251,13 +253,13 @@ def main():
             seen.add(x["num"])
 
     print("--- Processing Flicks ---")
-    for i in range(0, 2, 1):
-        tempFlick = Flick(links[i]["url"], links[i]["num"])
-        processFilm(tempFlick)
-
-    #for movie in links:
-    #    tempFlick = Flick(movie["url"], movie["num"])
+    #for i in range(0, 2, 1):
+    #    tempFlick = Flick(links[i]["url"], links[i]["num"])
     #    processFilm(tempFlick)
+
+    for movie in links:
+        tempFlick = Flick(movie["url"], movie["num"])
+        processFilm(tempFlick)
     
     #print("--- Flicks to Download ---")
     #for i in sovietMovies:
@@ -266,7 +268,8 @@ def main():
     #for i in skippedFlicks:
     #    print(i)
     
-    #CSV delimited by bar '|'
+    #CSV delimited by pipe "|" and nothing else.
+    #Extra string delimiters will create an unruly CSV
     print("--- Generating CSV File ---")
     writeCsv()
     totalSize = 0.0
