@@ -23,6 +23,6 @@ On the site, each flicks has a number id in the it's url slug. The majority of t
 
 ### Bugs and Issues
 * Some of the flicks are hosted through vimeo and aren't accessible without an account.
-* Some flicks are broken into pieces and thus having a slightly different naming scheme.
+* Some of the flicks are broken into pieces and thus having a slightly different naming scheme that is not accounted for.
 	* ex. \<flick num>-1.mp4 and \<flick num>-2.mp4
-* Some flick's html page results in a 404 yet the video is still hosted. They are available to download but are skipped since no information about the film can be scraped. 
+* Some of the flick's result in a 404 yet the video is still hosted. They are available to download but are skipped since no information about the film can be scraped. 
